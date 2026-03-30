@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:15
+    env_file:
+      - .env-airflow
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+
+  airflow-init:
+    image: apache/airflow:2.9.1
+    env_file:
+      - .env-airflow
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+    command: >
+      bash -c "airflow db migrate &&
+               airflow users create
+               --username ${AIRFLOW_ADMIN_USERNAME}
+               --password ${AIRFLOW_ADMIN_PASSWORD}
+               --firstname ${AIRFLOW_ADMIN_FIRSTNAME}
+               --lastname ${AIRFLOW_ADMIN_LASTNAME}
+               --role Admin
+               --email ${AIRFLOW_ADMIN_EMAIL}"
+    user: "50000:0"
+    volumes:
+      - ./dags:/opt/airflow/dags
+
+  airflow-webserver:
+    image: apache/airflow:2.9.1
+    env_file:
+      - .env-airflow
+    depends_on:
+      - postgres
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+    command: webserver
+    ports:
+      - "8080:8080"
+    user: "50000:0"
+    volumes:
+      - ./dags:/opt/airflow/dags
+
+  airflow-scheduler:
+    image: apache/airflow:2.9.1
+    env_file:
+      - .env-airflow
+    depends_on:
+      - postgres
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+    command: scheduler
+    user: "50000:0"
+    volumes:
+      - ./dags:/opt/airflow/dags
