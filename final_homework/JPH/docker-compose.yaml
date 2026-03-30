@@ -1,0 +1,14 @@
+services:
+  jupyterhub:
+    build: .
+    container_name: jupyterhub
+    ports:
+      - "${JUPYTERHUB_PORT}:8000"
+    volumes:
+      - "${JUPYTERHUB_DATA_DIR}:/srv/jupyterhub"
+      - ./jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - JUPYTERHUB_CRYPT_KEY=${JUPYTERHUB_CRYPT_KEY}
+    command: >
+      jupyterhub --config=/srv/jupyterhub/jupyterhub_config.py
